@@ -10,7 +10,7 @@ Needs Node.js 20 or newer.
 
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env  # then set ADMIN_PASSWORD and AUTH_SECRET
 npm run db:reset     # creates prisma/dev.db and (re)loads sample data, wiping existing rows
 npm run dev          # http://localhost:3000
 ```
@@ -33,6 +33,7 @@ npm run dev          # http://localhost:3000
 | `/news`, `/news/[slug]` | Articles; premium stories show a paywall |
 | `/boards` | Forums, team boards and a members-only board |
 | `/join` | Membership plans (placeholder prices, checkout not live) |
+| `/admin` | Password-protected admin: upload athletes and ratings from CSV or Excel |
 
 ## Data
 
@@ -40,11 +41,11 @@ The schema is in `prisma/schema.prisma`. Enum-like string fields list their allo
 
 - **Ratings and ranks.** Each athlete has one FAA rating per kind (`HS` or `TRANSFER`). National, position and state ranks are stored on the rating and recomputed by `recomputeRanks` in `src/lib/rankings.ts`. Stars come from the score: 98+ is 5 stars, 89+ is 4, 80+ is 3.
 - **Team score.** Computed on request from committed athletes' FAA scores, best first, each next commit weighted 10% less (`teamScore`).
-- **Importing your own athletes.** `npm run import:athletes -- path/to/file.csv` upserts athletes, high schools, commitments and ratings, then re-ranks each class it touched. See `scripts/examples/athletes.csv` for the columns.
+- **Importing your own athletes.** Sign in at `/admin` with `ADMIN_PASSWORD` and upload a `.csv` or `.xlsx` file, or run `npm run import:athletes -- path/to/file.csv` (or `.xlsx`). Each row adds or updates an athlete (matched by name and class), their high school, commitment and FAA rating, then every class in the file is re-ranked. Column names are flexible (for example `Player`, `Grad Year`, `Pos`, `Stars`, `Commit`); the accepted names are in `ALIASES` in `src/lib/importAthletes.ts`, and `/admin/template.csv` is a ready-made template. A rating (0-100) or a star count is needed for an athlete to appear in rankings.
 
 ## Not built yet
 
-- Accounts and sign-in (claiming profiles, posting in forums, members-only access)
+- Accounts and sign-in for fans and athletes (claiming profiles, posting in forums, members-only access); admin sign-in is a single shared password
 - Checkout and billing for memberships
 - An editor for articles and predictions (today they come from the seed or the database directly)
 - A production database (switch the Prisma datasource from SQLite to Postgres before deploying)
