@@ -1,0 +1,252 @@
+// Future All American data model. See the spec doc for field meanings.
+// SQLite has no enums, so enum-like fields are strings; allowed values are listed in src/lib/enums.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  displayName  String
+  role         String        @default("FAN") // FAN, MEMBER, ATHLETE, EXPERT, EDITOR, ADMIN
+  createdAt    DateTime      @default(now())
+  subscription Subscription?
+  expert       Expert?
+  claimed      Athlete[]     @relation("ClaimedBy")
+  articles     Article[]
+  threads      Thread[]
+  posts        Post[]
+}
+
+model Subscription {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      String // MONTHLY, ANNUAL
+  status    String // ACTIVE, CANCELED, PAST_DUE
+  startedAt DateTime  @default(now())
+  renewsAt  DateTime?
+}
+
+model HighSchool {
+  id       String    @id @default(cuid())
+  name     String
+  city     String
+  state    String
+  level    String    @default("HS") // HS, PREP, JUCO
+  athletes Athlete[]
+
+  @@unique([name, city, state])
+}
+
+model College {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  shortName      String
+  slug           String          @unique
+  conference     String
+  primaryColor   String
+  secondaryColor String
+  commits        Athlete[]       @relation("CommittedTo")
+  offers         Offer[]
+  visits         Visit[]
+  predictions    Prediction[]
+  events         CommitEvent[]
+  transfersOut   TransferEntry[] @relation("TransferFrom")
+  transfersIn    TransferEntry[] @relation("TransferTo")
+  boards         Board[]
+  articleTags    ArticleCollege[]
+}
+
+model Athlete {
+  id                 String          @id @default(cuid())
+  slug               String          @unique
+  firstName          String
+  lastName           String
+  sport              String // FOOTBALL, BASKETBALL
+  classYear          Int
+  position           String
+  heightIn           Int?
+  weightLb           Int?
+  hometownCity       String?
+  hometownState      String?
+  photoUrl           String?
+  status             String          @default("UNCOMMITTED") // UNCOMMITTED, COMMITTED, SIGNED, ENROLLED
+  commitDate         DateTime?
+  nilValuation       Int? // US dollars
+  verified           Boolean         @default(false)
+  highSchoolId       String?
+  highSchool         HighSchool?     @relation(fields: [highSchoolId], references: [id])
+  committedCollegeId String?
+  committedCollege   College?        @relation("CommittedTo", fields: [committedCollegeId], references: [id])
+  claimedById        String?
+  claimedBy          User?           @relation("ClaimedBy", fields: [claimedById], references: [id])
+  ratings            Rating[]
+  offers             Offer[]
+  visits             Visit[]
+  predictions        Prediction[]
+  events             CommitEvent[]
+  transfers          TransferEntry[]
+  articleTags        ArticleAthlete[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([sport, classYear])
+}
+
+model Rating {
+  id           String   @id @default(cuid())
+  athleteId    String
+  athlete      Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  source       String   @default("FAA") // FAA or a licensed service
+  kind         String   @default("HS") // HS, TRANSFER
+  stars        Int
+  score        Float // 0-100
+  nationalRank Int?
+  positionRank Int?
+  stateRank    Int?
+  ratedAt      DateTime @default(now())
+
+  @@unique([athleteId, source, kind])
+}
+
+model Offer {
+  id        String   @id @default(cuid())
+  athleteId String
+  athlete   Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id])
+  offeredAt DateTime
+  status    String   @default("ACTIVE") // ACTIVE, COMMITTABLE, WITHDRAWN
+
+  @@unique([athleteId, collegeId])
+}
+
+model Visit {
+  id        String   @id @default(cuid())
+  athleteId String
+  athlete   Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id])
+  type      String // OFFICIAL, UNOFFICIAL, JUNIOR_DAY
+  visitDate DateTime
+}
+
+model CommitEvent {
+  id         String   @id @default(cuid())
+  athleteId  String
+  athlete    Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  collegeId  String
+  college    College  @relation(fields: [collegeId], references: [id])
+  type       String // COMMIT, DECOMMIT, SIGN, ENROLL
+  occurredAt DateTime
+}
+
+model Expert {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id])
+  displayName String
+  outlet      String       @default("Future All American")
+  bio         String?
+  predictions Prediction[]
+}
+
+model Prediction {
+  id          String    @id @default(cuid())
+  athleteId   String
+  athlete     Athlete   @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  expertId    String
+  expert      Expert    @relation(fields: [expertId], references: [id])
+  collegeId   String
+  college     College   @relation(fields: [collegeId], references: [id])
+  confidence  Int // 0-100
+  predictedAt DateTime
+  result      String    @default("PENDING") // PENDING, CORRECT, INCORRECT
+  resolvedAt  DateTime?
+}
+
+model TransferEntry {
+  id            String    @id @default(cuid())
+  athleteId     String
+  athlete       Athlete   @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  fromCollegeId String
+  fromCollege   College   @relation("TransferFrom", fields: [fromCollegeId], references: [id])
+  toCollegeId   String?
+  toCollege     College?  @relation("TransferTo", fields: [toCollegeId], references: [id])
+  enteredAt     DateTime
+  eligibility   String // FR, SO, JR, SR, GR
+  status        String // ENTERED, COMMITTED, EXPECTED, ENROLLED, WITHDRAWN
+}
+
+model Article {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  title       String
+  category    String // FOOTBALL_RECRUITING, BASKETBALL_RECRUITING, HIGH_SCHOOL, TRANSFER_PORTAL, NIL
+  excerpt     String
+  body        String
+  premium     Boolean          @default(false)
+  publishedAt DateTime
+  authorId    String
+  author      User             @relation(fields: [authorId], references: [id])
+  athletes    ArticleAthlete[]
+  colleges    ArticleCollege[]
+}
+
+model ArticleAthlete {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  athleteId String
+  athlete   Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, athleteId])
+}
+
+model ArticleCollege {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  collegeId String
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, collegeId])
+}
+
+model Board {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  premium     Boolean  @default(false)
+  collegeId   String?
+  college     College? @relation(fields: [collegeId], references: [id])
+  threads     Thread[]
+}
+
+model Thread {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  pinned    Boolean  @default(false)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  posts     Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+}
