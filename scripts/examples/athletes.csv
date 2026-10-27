@@ -1,0 +1,3 @@
+firstName,lastName,sport,classYear,position,heightIn,weightLb,highSchool,city,state,score,status,committedTo,nilValuation
+Example,Prospect,FOOTBALL,2027,QB,75,205,Sample Central,Austin,TX,97.4,COMMITTED,Texas,450000
+Demo,Guard,BASKETBALL,2028,PG,74,175,Sample Prep,Atlanta,GA,93.1,,,
