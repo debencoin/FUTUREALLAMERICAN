@@ -1,0 +1,8 @@
+{
+  "appId": "com.futureallamerican.recruit",
+  "appName": "FAA Recruit",
+  "webDir": "www",
+  "backgroundColor": "#08101c",
+  "ios": { "contentInset": "always" },
+  "android": { "allowMixedContent": false }
+}
